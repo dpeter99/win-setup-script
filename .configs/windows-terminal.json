@@ -1,0 +1,12 @@
+{
+    "profiles":
+    {
+        "defaults":
+        {
+            "font":
+            {
+                "face": "CaskaydiaCove NF"
+            }
+        }
+    }
+}
