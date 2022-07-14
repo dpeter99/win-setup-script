@@ -23,14 +23,24 @@ Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock {
         }
 }
 
+Register-ArgumentCompleter -CommandName Project -ParameterName Name -ScriptBlock {
+    param($commandName, $wordToComplete, $cursorPosition)
+        Get-ChildItem -Path ($env:Projects + "/_Projects/") -Directory | ForEach-Object {
+           [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Name)
+        }
+}
 
 function Project {
-    param (
-        Name
+    param(
+        $Name
     )
-    $path = $env:PROREJTS + "/_Projects/" + $Name + $Name
+    $path = $env:Projects + "/_Projects/" + $Name + "/" + $Name
     if(Test-Path -Path $path)
     {
+        cd $path;
+    }
+    else{
+        New-Item $Path -ItemType Directory | Out-Null
         cd $path;
     }
 }

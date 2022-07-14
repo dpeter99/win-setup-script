@@ -1,6 +1,12 @@
 . ./utils.ps1
 . ./providers/winget.ps1
 
+$executionPolicy = Get-ExecutionPolicy;
+if($executionPolicy -eq "Restricted"){
+    Write-Host "Changing execution policy"
+    Set-ExecutionPolicy Bypass -Scope CurrentUser
+}
+
 # Get the ID and security principal of the current user account
 $myWindowsID=[System.Security.Principal.WindowsIdentity]::GetCurrent()
 $myWindowsPrincipal=new-object System.Security.Principal.WindowsPrincipal($myWindowsID)
@@ -50,8 +56,10 @@ else
 #Install New apps
 $apps = @(
     @{mgr="winget"; name = "Google.Chrome" },
+    @{mgr="winget"; name = "Spotify.Spotify"; source="msstore"},
 
-    @{mgr="winget"; name = "ShareX.ShareX" }, 
+    @{mgr="winget"; name = "ShareX.ShareX" },
+
     @{mgr="winget"; name = "Microsoft.PowerShell" }, 
     @{mgr="winget"; name = "Microsoft.VisualStudioCode" }, 
     @{mgr="winget"; name = "Microsoft.WindowsTerminal"; source = "msstore" },
@@ -66,7 +74,8 @@ $apps = @(
 
     @{mgr="winget"; name = "JetBrains.Toolbox" },
     @{mgr="winget"; name = "CoreyButler.NVMforWindows"},
-    
+        
+    @{mgr="winget"; name = "GnuPG.Gpg4win" },
     @{mgr="winget"; name = "Git.Git" },
     @{mgr="winget"; name = "GitHub.GitLFS" },
     @{mgr="winget"; name = "Axosoft.GitKraken" },
@@ -75,40 +84,64 @@ $apps = @(
     @{mgr="winget"; name = "Atlassian.Sourcetree" }
 
     @{mgr="winget"; name = "SlackTechnologies.Slack" }
+
+    @{mgr="winget"; name = "SparkLabs.Viscosity"}
     
     @{mgr="choco"; name = "lazygit" }
     @{mgr="choco"; name = "bazelisk" }
-
+    @{mgr="choco"; name = "buildifier" }
+    @{mgr="choco"; name = "buildozer" }
     
     @{mgr="winget"; name = "EclipseAdoptium.Temurin.11" }
     @{mgr="winget"; name = "Docker.DockerDesktop" }
     
 );
 
-$executionPolicy = Get-ExecutionPolicy;
-if($executionPolicy -eq "Restricted"){
-    Write-Host "Changing execution policy"
-    Set-ExecutionPolicy Bypass -Scope Process
-}
+
 
 Write-Host "###############################################################"
 Write-Host "Ensuring chocolaty is installed"
 Ensure-Choco
 
-$needsInstall = @();
-ForEach -Parallel ($app in $apps) {
-
-
-
-}
-
 $appCount = $apps.Count;
-Foreach ($app in $apps) {
+$i = 0;
+$needsInstall = New-Object System.Collections.Generic.List[System.Object];
+$apps | Where-Object {
+    $pkgName = $_.name;
+    $i++
+    $percentComplete = [math]::Round(($i/$apps.count)*100,2)
+    Write-Progress -Activity "Installing ${_.name}" -Status ("[$PercentComplete]" + $_.name) -PercentComplete $PercentComplete -Id 0
+    #Write-Host ($i/$appCount*100)
+
+    switch ($_.mgr) {
+        "winget" { 
+            $listApp = winget list --exact --query ($pkgName)
+            if ([String]::Join("", $listApp).Contains($pkgName)) {
+                return $false
+            }
+        }
+        "choco" { 
+            $listApp = choco list -r $pkgName
+            if ([string]::IsNullOrEmpty($listApp)) {
+                return $false
+            }
+        }
+    }
+    #Start-Sleep -Milliseconds 250
+    return $true;
+} | ForEach-Object {
+    Write-Host "Needs Installing: " $_.name;
+    $needsInstall.Add($_);
+} 
+
+Write-Progress -Activity "Checking" -Status ("[Finished]") -Completed -Id 0
+
+Foreach ($app in $needsInstall) {
     
     $i = ([array]::IndexOf($apps, $app));
 
     $PercentComplete = [int](($i / $appCount) * 100)
-    Write-Progress -Activity "Installing" -Status "$PercentComplete%" -PercentComplete ($i/$appCount*100) -Id 0
+    Write-Progress -Activity "Installing" -Status "$PercentComplete%" -PercentComplete ($i/$appCount*100) -Id 1
 
     $i = ($i+1).ToString().PadLeft(2);
     $prefix = "[ " + $i + "/" + $appCount + " ]";
@@ -120,6 +153,7 @@ Foreach ($app in $apps) {
             #check if the app is already installed
             $listApp = winget list --exact -q $app.name
             if (![String]::Join("", $listApp).Contains($app.name)) {
+            #if (!(IsInstalled-Winget -Name $app.name)) {
                 Write-host $prefix " Installing:" $app.name
                 if ($null -ne $app.source) {
                     winget install --exact --silent $app.name --source $app.source
@@ -135,7 +169,7 @@ Foreach ($app in $apps) {
         "choco" { 
             #check if the app is already installed
             $listApp = choco list -r $app.name
-            if (![String]::Join("", $listApp).Contains($app.name)) {
+            if ([string]::IsNullOrEmpty($listApp)) {
                 Write-host $prefix " Installing:" $app.name
                 if ($app.source -ne $null) {
                     choco install $app.name --source $app.source
@@ -152,7 +186,9 @@ Foreach ($app in $apps) {
     }
     
 }
-Write-Progress -Activity "Installing" -Status "$PercentComplete%" -Completed -Id 0
+Write-Progress -Activity "Installing" -Status "$PercentComplete%" -Completed -Id 1
+
+Write-Host "[   ] All Programs installed"
 
 Write-Host "##########################################################"
 Write-Host "Installing WSL2"
@@ -223,7 +259,7 @@ Write-Host "##########################################################"
 Write-Host "Setting up work folders"
 
 $workFolderName = "programing"
-$workFolder = "${HOME}/" + $workFolderName
+$workFolder = "${HOME}/Documents/" + $workFolderName
 
 if(!(Test-Path -Path $workFolder -PathType Container)){
     New-Item -Path "${HOME}" -Name $workFolderName -ItemType "directory"
@@ -232,7 +268,7 @@ Write-Host "[   ] Copy configs"
 
 
 Write-Host "[   ] Set env varaiable ConfigLocation"
-[System.Environment]::SetEnvironmentVariable('Projects',$workFolderName, 'User')
+[System.Environment]::SetEnvironmentVariable('Projects',$workFolder, 'User')
 
 
 
