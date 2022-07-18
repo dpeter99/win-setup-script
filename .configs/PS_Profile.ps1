@@ -24,17 +24,50 @@ Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock {
 }
 
 Register-ArgumentCompleter -CommandName Project -ParameterName Name -ScriptBlock {
-    param($commandName, $wordToComplete, $cursorPosition)
-        Get-ChildItem -Path ($env:Projects + "/_Projects/") -Directory | ForEach-Object {
-           [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Name)
+    param($commandName,
+    $parameterName,
+    $wordToComplete,
+    $commandAst,
+    $fakeBoundParameters)
+
+    if ($fakeBoundParameters.ContainsKey('Type')) {
+        $path = Get-PathForProjectType $fakeBoundParameters.Type
+    } else {
+        $path = Get-PathForProjectType ""
+    }
+
+    Get-ChildItem -Path ($path) -Directory | ForEach-Object {
+        [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Name)
+    }
+}
+
+
+function Get-PathForProjectType {
+    param (
+        $Type
+    )
+    $path = $env:Projects + "/_Projects/"
+    switch ($Type) {
+        "Test" { 
+            $path = $env:Projects + "/_Tests/"
         }
+        "Work" {
+            $path = $env:HOMEPATH + "/Documents/_Work/"
+        }
+        Default {}
+    }
+    Write-Host $path
+    return $path
 }
 
 function Project {
     param(
+        $Type,
         $Name
     )
-    $path = $env:Projects + "/_Projects/" + $Name + "/" + $Name
+    $path = Get-PathForProjectType $Type
+
+    $path = $path + $Name + "/" + $Name
     if(Test-Path -Path $path)
     {
         cd $path;

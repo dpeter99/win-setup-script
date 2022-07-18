@@ -240,7 +240,7 @@ if(!(Test-FontExists CascadiaCode)){
 
 Write-Host "Installing oh-my-posh"
 Get-Content -Path "${HOME}/.configs/PS_Profile.ps1" | Set-Content -Path $PROFILE
-Add-Content -Path $PROFILE -Value 'oh-my-posh init pwsh --config "${env:ConfigLocation}/posh-terminal.json" | Invoke-Expression'
+Add-Content -Path $PROFILE -Value 'oh-my-posh init pwsh --config "$env:ConfigLocation/posh-terminal.json | Invoke-Expression'
 
 
 Write-Host "Configuring Windows Terminal"
