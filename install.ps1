@@ -42,21 +42,10 @@ else
    exit
 }
 
-# Run your code that needs to be elevated here
-#$appCount = 100
-#for ($i = 1; $i -le 100; $i++ )
-#{
-#    $progress = (($i / $appCount) * 100);
-    #Write-Host $progress
-    #Write-Progress -Activity "Search in Progress" -Status "$i% Complete:" -PercentComplete $progress -Id 10
-    #Start-Sleep -Milliseconds 250
-#}
-#Write-Progress -Activity "Search in Progress" -Status "$i% Complete:" -PercentComplete $progress -Id 10 -Completed $true
-
 #Install New apps
 $apps = @(
     @{mgr="winget"; name = "Google.Chrome" },
-    @{mgr="winget"; name = "Spotify.Spotify"; source="msstore"},
+    @{mgr="winget"; name = "9NCBCSZSJRSB"; source="msstore"}, # Spotify
 
     @{mgr="winget"; name = "ShareX.ShareX" },
 
@@ -66,6 +55,8 @@ $apps = @(
     @{mgr="winget"; name = "Microsoft.WindowsTerminal.Preview"; source = "msstore" },
     @{mgr="winget"; name = "JanDeDobbeleer.OhMyPosh"; source="winget"},
     @{mgr="winget"; name = "Microsoft.PowerToys" },
+    @{mgr="winget"; name = "sysinternals" },
+    
 
     @{mgr="winget"; name = "Notepad++.Notepad++" },
     @{mgr="winget"; name = "VideoLAN.VLC" },
@@ -92,9 +83,12 @@ $apps = @(
     @{mgr="choco"; name = "buildifier" }
     @{mgr="choco"; name = "buildozer" }
     
+    @{mgr="winget"; name = "Python.Python.3"}
+
     @{mgr="winget"; name = "EclipseAdoptium.Temurin.11" }
     @{mgr="winget"; name = "Docker.DockerDesktop" }
     
+    @{mgr="winget"; name = "Obsidian.Obsidian"}
 );
 
 
@@ -103,67 +97,34 @@ Write-Host "###############################################################"
 Write-Host "Ensuring chocolaty is installed"
 Ensure-Choco
 
-$appCount = $apps.Count;
-$i = 0;
-$needsInstall = New-Object System.Collections.Generic.List[System.Object];
-$apps | Where-Object {
-    $pkgName = $_.name;
-    $i++
-    $percentComplete = [math]::Round(($i/$apps.count)*100,2)
-    Write-Progress -Activity "Installing ${_.name}" -Status ("[$PercentComplete]" + $_.name) -PercentComplete $PercentComplete -Id 0
-    #Write-Host ($i/$appCount*100)
+Write-Host "###############################################################"
+Write-Host "Installing"
 
-    switch ($_.mgr) {
-        "winget" { 
-            $listApp = winget list --exact --query ($pkgName)
-            if ([String]::Join("", $listApp).Contains($pkgName)) {
-                return $false
-            }
-        }
-        "choco" { 
-            $listApp = choco list -r $pkgName
-            if ([string]::IsNullOrEmpty($listApp)) {
-                return $false
-            }
-        }
-    }
-    #Start-Sleep -Milliseconds 250
-    return $true;
-} | ForEach-Object {
-    Write-Host "Needs Installing: " $_.name;
-    $needsInstall.Add($_);
-} 
-
-Write-Progress -Activity "Checking" -Status ("[Finished]") -Completed -Id 0
-
-Foreach ($app in $needsInstall) {
+Foreach ($app in $apps) {
     
     $i = ([array]::IndexOf($apps, $app));
 
-    $PercentComplete = [int](($i / $appCount) * 100)
-    Write-Progress -Activity "Installing" -Status "$PercentComplete%" -PercentComplete ($i/$appCount*100) -Id 1
+    $PercentComplete = [int](($i / $apps.Count) * 100)
+    Write-Progress -Activity "Installing" -Status "$PercentComplete%" -PercentComplete ($i/$apps.Count*100) -Id 1
 
     $i = ($i+1).ToString().PadLeft(2);
     $prefix = "[ " + $i + "/" + $appCount + " ]";
-
-    
 
     switch ($app.mgr) {
         "winget" { 
             #check if the app is already installed
             $listApp = winget list --exact -q $app.name
             if (![String]::Join("", $listApp).Contains($app.name)) {
-            #if (!(IsInstalled-Winget -Name $app.name)) {
                 Write-host $prefix " Installing:" $app.name
                 if ($null -ne $app.source) {
-                    winget install --exact --silent $app.name --source $app.source
+                    winget install --exact --silent $app.name --source $app.source | Write-Host
                 }
                 else {
-                    winget install --exact --silent $app.name 
+                    winget install --exact --silent $app.name  | Write-Host
                 }
             }
             else {
-                Write-host $prefix " Skipping Install of " $app.name
+                Write-host "$prefix Skipping Install of $($app.name)" -ForegroundColor DarkGreen
             }
         }
         "choco" { 
@@ -172,14 +133,14 @@ Foreach ($app in $needsInstall) {
             if ([string]::IsNullOrEmpty($listApp)) {
                 Write-host $prefix " Installing:" $app.name
                 if ($app.source -ne $null) {
-                    choco install $app.name --source $app.source
+                    choco install $app.name --source $app.source  | Write-Host
                 }
                 else {
-                    choco install $app.name 
+                    choco install $app.name  | Write-Host
                 }
             }
             else {
-                Write-host $prefix " Skipping Install of " $app.name
+                Write-host "$prefix Skipping Install of $($app.name)" -ForegroundColor DarkGreen
             }
         }
         Default {}
@@ -239,8 +200,9 @@ if(!(Test-FontExists CascadiaCode)){
 
 
 Write-Host "Installing oh-my-posh"
-Get-Content -Path "${HOME}/.configs/PS_Profile.ps1" | Set-Content -Path $PROFILE
-Add-Content -Path $PROFILE -Value 'oh-my-posh init pwsh --config "$env:ConfigLocation/posh-terminal.json | Invoke-Expression'
+# Get-Content -Path "${HOME}/.configs/PS_Profile.ps1" | Set-Content -Path $PROFILE
+Remove-Item -Path $PROFILE
+New-Item -Path $PROFILE -ItemType SymbolicLink -Value "${HOME}/.configs/PS_Profile.ps1"
 
 
 Write-Host "Configuring Windows Terminal"
@@ -261,14 +223,40 @@ Write-Host "Setting up work folders"
 $workFolderName = "programing"
 $workFolder = "${HOME}/Documents/" + $workFolderName
 
+$decision = $Host.UI.PromptForChoice('Main folder', "What folder do you want to use for projects and SDks? /n $workFolder", @('&Custom'; '&Default'; '&None'), 1)
+
+if($decision -eq 0){
+    $workFolder = Read-Host -Prompt "Enter your directory: "
+}
+elseif ($decision -eq 2) {
+    return;
+}
+
+
 if(!(Test-Path -Path $workFolder -PathType Container)){
     New-Item -Path "${HOME}" -Name $workFolderName -ItemType "directory"
 }
-Write-Host "[   ] Copy configs"
 
-
-Write-Host "[   ] Set env varaiable ConfigLocation"
+Write-Host "[   ] Set env varaiable Projects"
 [System.Environment]::SetEnvironmentVariable('Projects',$workFolder, 'User')
 
+Write-Host "Optional Features"
+
+Write-Host "Vulkan SDK"
+
+$decision = $Host.UI.PromptForChoice('VulkanSDK', 'Do you want to install VulkanSDK', @('&Yes'; '&No'), 1)
+if($decision -eq 0){
+    $TargetDir = "${env:Projects}/_SDKs/Vulkan"
+    Ensure-Dir $TargetDir
+
+    $SDK_VERSION = "latest"
+    $source = "https://sdk.lunarg.com/sdk/download/${SDK_VERSION}/windows/vulkan_sdk.exe"
+
+    $destination = "${env:Projects}/_Tmp/Downloads"
+    Ensure-Dir $destination
+    #Invoke-WebRequest -Uri $source -OutFile "$destination/vulkan_sdk.exe"
+
+    & "$destination/vulkan_sdk.exe" --root $TargetDir --accept-licenses --default-answer --confirm-command install
 
 
+}

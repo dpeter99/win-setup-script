@@ -53,3 +53,13 @@ function Test-FontExists
     }
     return $check
 }
+
+
+function Ensure-Dir {
+    param (
+        $Dir
+    )
+    if(!(Test-Path -Path $Dir -PathType Container)){
+        New-Item -ItemType Directory -Force -Path $Dir
+    }
+}

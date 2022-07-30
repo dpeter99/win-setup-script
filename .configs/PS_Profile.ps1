@@ -56,14 +56,13 @@ function Get-PathForProjectType {
         }
         Default {}
     }
-    Write-Host $path
     return $path
 }
 
 function Project {
     param(
-        $Type,
-        $Name
+        $Name,
+        $Type
     )
     $path = Get-PathForProjectType $Type
 
@@ -76,4 +75,6 @@ function Project {
         New-Item $Path -ItemType Directory | Out-Null
         cd $path;
     }
+    # Write-Host $path;
 }
+oh-my-posh init pwsh --config "$env:ConfigLocation/posh-terminal.json" | Invoke-Expression
