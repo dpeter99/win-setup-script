@@ -45,7 +45,8 @@ else
 #Install New apps
 $apps = @(
     @{mgr="winget"; name = "Google.Chrome" },
-    @{mgr="winget"; name = "9NCBCSZSJRSB"; source="msstore"}, # Spotify
+    # @{mgr="winget"; name = "9NCBCSZSJRSB"; source="msstore"}, # Spotify
+    @{mgr="winget"; name = "Discord.Discord"},
 
     @{mgr="winget"; name = "ShareX.ShareX" },
 
@@ -55,13 +56,15 @@ $apps = @(
     @{mgr="winget"; name = "Microsoft.WindowsTerminal.Preview"; source = "msstore" },
     @{mgr="winget"; name = "JanDeDobbeleer.OhMyPosh"; source="winget"},
     @{mgr="winget"; name = "Microsoft.PowerToys" },
-    @{mgr="winget"; name = "sysinternals" },
+    @{mgr="winget"; name = "9P7KNL5RWT25"; source="msstore"}, # Sysinternals
     
 
     @{mgr="winget"; name = "Notepad++.Notepad++" },
     @{mgr="winget"; name = "VideoLAN.VLC" },
     @{mgr="winget"; name = "7zip.7zip" },
     
+    @{mgr="winget"; name = "PuTTY.PuTTY"},
+    @{mgr="winget"; name = "WinSCP.WinSCP"},
 
     @{mgr="winget"; name = "JetBrains.Toolbox" },
     @{mgr="winget"; name = "CoreyButler.NVMforWindows"},
@@ -70,7 +73,6 @@ $apps = @(
     @{mgr="winget"; name = "Git.Git" },
     @{mgr="winget"; name = "GitHub.GitLFS" },
     @{mgr="winget"; name = "Axosoft.GitKraken" },
-
     @{mgr="winget"; name = "GitHub.cli" }
     @{mgr="winget"; name = "Atlassian.Sourcetree" }
 
@@ -85,10 +87,15 @@ $apps = @(
     
     @{mgr="winget"; name = "Python.Python.3"}
 
-    @{mgr="winget"; name = "EclipseAdoptium.Temurin.11" }
+    @{mgr="winget"; name="Postman.Postman" }
+    @{mgr="winget"; name="HeidiSQL.HeidiSQL"}
+
+    #@{mgr="winget"; name = "EclipseAdoptium.Temurin.11" }
     @{mgr="winget"; name = "Docker.DockerDesktop" }
     
     @{mgr="winget"; name = "Obsidian.Obsidian"}
+
+     @{mgr="choco"; name = "paint.net" }
 );
 
 
@@ -108,7 +115,7 @@ Foreach ($app in $apps) {
     Write-Progress -Activity "Installing" -Status "$PercentComplete%" -PercentComplete ($i/$apps.Count*100) -Id 1
 
     $i = ($i+1).ToString().PadLeft(2);
-    $prefix = "[ " + $i + "/" + $appCount + " ]";
+    $prefix = "[ " + $i + "/" + $apps.Count + " ]";
 
     switch ($app.mgr) {
         "winget" { 
@@ -122,6 +129,13 @@ Foreach ($app in $apps) {
                 else {
                     winget install --exact --silent $app.name  | Write-Host
                 }
+
+                if($LASTEXITCODE -eq 0){
+                    Write-host "$prefix Installing: ${app.name}" -ForegroundColor Green
+                }
+                else{
+                    Write-host "$prefix Installing: ${app.name}" -ForegroundColor Red
+                }
             }
             else {
                 Write-host "$prefix Skipping Install of $($app.name)" -ForegroundColor DarkGreen
@@ -129,14 +143,14 @@ Foreach ($app in $apps) {
         }
         "choco" { 
             #check if the app is already installed
-            $listApp = choco list -r $app.name
+            $listApp = choco list --local-only -r -e $app.name
             if ([string]::IsNullOrEmpty($listApp)) {
                 Write-host $prefix " Installing:" $app.name
                 if ($app.source -ne $null) {
-                    choco install $app.name --source $app.source  | Write-Host
+                    choco install $app.name --source $app.source -y  | Write-Host
                 }
                 else {
-                    choco install $app.name  | Write-Host
+                    choco install $app.name -y  | Write-Host
                 }
             }
             else {
@@ -163,11 +177,14 @@ wsl --set-default-version 2
 Write-Host "##########################################################"
 Write-Host "Creating config folder"
 
-if(!(Test-Path -Path "${HOME}/.configs" -PathType Container)){
-    New-Item -Path "${HOME}" -Name ".configs" -ItemType "directory"
-}
+Ensure-Dir -Dir "${HOME}/.configs"
+
 Write-Host "[   ] Copy configs"
 robocopy "./.configs" "${HOME}/.configs" > $null
+
+Write-Host "[   ] Create scripts folder"
+Ensure-Dir -Dir "${HOME}/.configs/.scripts"
+[System.Environment]::SetEnvironmentVariable("Path", $env:Path + ";${HOME}/.configs/.scripts", "User")
 
 Write-Host "[   ] Set env varaiable ConfigLocation"
 [System.Environment]::SetEnvironmentVariable('ConfigLocation',"${HOME}/.configs", 'User')
@@ -201,7 +218,9 @@ if(!(Test-FontExists CascadiaCode)){
 
 Write-Host "Installing oh-my-posh"
 # Get-Content -Path "${HOME}/.configs/PS_Profile.ps1" | Set-Content -Path $PROFILE
-Remove-Item -Path $PROFILE
+if((Test-Path -Path $PROFILE -PathType leaf)){
+    Remove-Item -Path $PROFILE
+}
 New-Item -Path $PROFILE -ItemType SymbolicLink -Value "${HOME}/.configs/PS_Profile.ps1"
 
 
@@ -223,15 +242,21 @@ Write-Host "Setting up work folders"
 $workFolderName = "programing"
 $workFolder = "${HOME}/Documents/" + $workFolderName
 
-$decision = $Host.UI.PromptForChoice('Main folder', "What folder do you want to use for projects and SDks? /n $workFolder", @('&Custom'; '&Default'; '&None'), 1)
+if($Null -ne $env:Projects){
+    $workFolder = $env:Projects;
 
-if($decision -eq 0){
-    $workFolder = Read-Host -Prompt "Enter your directory: "
+    Write-Host "Found existing Project env config going with $env:Projects"
 }
-elseif ($decision -eq 2) {
-    return;
-}
+else{
+    $decision = $Host.UI.PromptForChoice('Main folder', "What folder do you want to use for projects and SDks? /n $workFolder", @('&Custom'; '&Default'; '&None'), 1)
 
+    if($decision -eq 0){
+        $workFolder = Read-Host -Prompt "Enter your directory: "
+    }
+    elseif ($decision -eq 2) {
+        return;
+    }
+}
 
 if(!(Test-Path -Path $workFolder -PathType Container)){
     New-Item -Path "${HOME}" -Name $workFolderName -ItemType "directory"
@@ -240,23 +265,39 @@ if(!(Test-Path -Path $workFolder -PathType Container)){
 Write-Host "[   ] Set env varaiable Projects"
 [System.Environment]::SetEnvironmentVariable('Projects',$workFolder, 'User')
 
+
+. ./providers/notes.ps1
+
+Notes;
+
 Write-Host "Optional Features"
+
 
 Write-Host "Vulkan SDK"
 
-$decision = $Host.UI.PromptForChoice('VulkanSDK', 'Do you want to install VulkanSDK', @('&Yes'; '&No'), 1)
-if($decision -eq 0){
-    $TargetDir = "${env:Projects}/_SDKs/Vulkan"
-    Ensure-Dir $TargetDir
+if (!(Test-Path 'env:ImportStatus ')) {
 
-    $SDK_VERSION = "latest"
-    $source = "https://sdk.lunarg.com/sdk/download/${SDK_VERSION}/windows/vulkan_sdk.exe"
+    $decision = $Host.UI.PromptForChoice('VulkanSDK', 'Do you want to install VulkanSDK', @('&Yes'; '&No'), 1)
+    if($decision -eq 0){
+        $TargetDir = "${env:Projects}/_SDKs/Vulkan"
+        Ensure-Dir $TargetDir
 
-    $destination = "${env:Projects}/_Tmp/Downloads"
-    Ensure-Dir $destination
-    #Invoke-WebRequest -Uri $source -OutFile "$destination/vulkan_sdk.exe"
+        $SDK_VERSION = "latest"
+        $source = "https://sdk.lunarg.com/sdk/download/${SDK_VERSION}/windows/vulkan_sdk.exe"
 
-    & "$destination/vulkan_sdk.exe" --root $TargetDir --accept-licenses --default-answer --confirm-command install
+        $destination = "${env:Projects}/_Tmp/Downloads"
+        Ensure-Dir $destination
+        $destFile = "$destination/vulkan_sdk.exe"
+        
+        if(!(Test-Path -Path $destFile)){
+            Invoke-WebRequest -Uri $source -OutFile $destFile
+        }
+
+        & $destFile --root $TargetDir --accept-licenses --default-answer --confirm-command install
 
 
+    }
+}
+else {
+    Write-Host "Vulkan is already installed"
 }

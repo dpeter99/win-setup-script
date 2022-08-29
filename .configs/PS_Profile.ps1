@@ -52,7 +52,7 @@ function Get-PathForProjectType {
             $path = $env:Projects + "/_Tests/"
         }
         "Work" {
-            $path = $env:HOMEPATH + "/Documents/_Work/"
+            $path = $env:Projects + "/_Work/"
         }
         Default {}
     }
@@ -77,4 +77,5 @@ function Project {
     }
     # Write-Host $path;
 }
+
 oh-my-posh init pwsh --config "$env:ConfigLocation/posh-terminal.json" | Invoke-Expression
