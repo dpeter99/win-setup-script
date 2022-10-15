@@ -41,12 +41,37 @@ Register-ArgumentCompleter -CommandName Project -ParameterName Name -ScriptBlock
     }
 }
 
+$types = @(
+    "Test",
+    "Work",
+    "Others"
+)
+
+Register-ArgumentCompleter -CommandName Project -ParameterName Type -ScriptBlock {
+    param($commandName,
+    $parameterName,
+    $wordToComplete,
+    $commandAst,
+    $fakeBoundParameters)
+
+    if ($fakeBoundParameters.ContainsKey('Type')) {
+        $path = Get-PathForProjectType $fakeBoundParameters.Type
+    } else {
+        $path = Get-PathForProjectType ""
+    }
+
+    $types | ForEach-Object {
+        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+    }
+}
+
 
 function Get-PathForProjectType {
     param (
         $Type
     )
     $path = $env:Projects + "/_Projects/"
+    
     switch ($Type) {
         "Test" { 
             $path = $env:Projects + "/_Tests/"
@@ -54,8 +79,16 @@ function Get-PathForProjectType {
         "Work" {
             $path = $env:Projects + "/_Work/"
         }
-        Default {}
+        "Others" {
+            $path = $env:Projects + "/_Others/"
+        }
+        Default {
+            if($Type){
+                Write-Error "Could not find $Type"
+            }
+        }
     }
+    
     return $path
 }
 

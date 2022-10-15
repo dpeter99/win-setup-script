@@ -1,4 +1,4 @@
-. ./utils.ps1
+Import-Module -Name "$PSScriptRoot/utils.psm1"
 . ./providers/winget.ps1
 
 $executionPolicy = Get-ExecutionPolicy;
@@ -73,29 +73,33 @@ $apps = @(
     @{mgr="winget"; name = "Git.Git" },
     @{mgr="winget"; name = "GitHub.GitLFS" },
     @{mgr="winget"; name = "Axosoft.GitKraken" },
-    @{mgr="winget"; name = "GitHub.cli" }
-    @{mgr="winget"; name = "Atlassian.Sourcetree" }
+    @{mgr="winget"; name = "GitHub.cli" },
+    @{mgr="winget"; name = "Atlassian.Sourcetree" },
 
-    @{mgr="winget"; name = "SlackTechnologies.Slack" }
+    @{mgr="winget"; name = "SlackTechnologies.Slack" },
 
-    @{mgr="winget"; name = "SparkLabs.Viscosity"}
+    @{mgr="winget"; name = "SparkLabs.Viscosity"},
     
-    @{mgr="choco"; name = "lazygit" }
-    @{mgr="choco"; name = "bazelisk" }
-    @{mgr="choco"; name = "buildifier" }
-    @{mgr="choco"; name = "buildozer" }
+    @{mgr="choco"; name = "lazygit" },
+    @{mgr="choco"; name = "bazelisk" },
+    @{mgr="choco"; name = "buildifier" },
+    @{mgr="choco"; name = "buildozer" },
     
-    @{mgr="winget"; name = "Python.Python.3"}
+    @{mgr="winget"; name = "Python.Python.3"},
 
-    @{mgr="winget"; name="Postman.Postman" }
-    @{mgr="winget"; name="HeidiSQL.HeidiSQL"}
+    @{mgr="winget"; name="Postman.Postman" },
+    @{mgr="winget"; name="HeidiSQL.HeidiSQL"},
 
     #@{mgr="winget"; name = "EclipseAdoptium.Temurin.11" }
     @{mgr="winget"; name = "Docker.DockerDesktop" }
+    @{mgr="winget"; name = "Mirantis.Lens" }
+    @{mgr="winget"; name = "DominikReichl.KeePass" }
+    @{mgr="winget"; name = "ChristianSchenk.MiKTeX" }
+    @{mgr="winget"; name = "StrawberryPerl.StrawberryPerl" }
     
     @{mgr="winget"; name = "Obsidian.Obsidian"}
 
-     @{mgr="choco"; name = "paint.net" }
+    @{mgr="choco"; name = "paint.net" }
 );
 
 
@@ -165,14 +169,7 @@ Write-Progress -Activity "Installing" -Status "$PercentComplete%" -Completed -Id
 
 Write-Host "[   ] All Programs installed"
 
-Write-Host "##########################################################"
-Write-Host "Installing WSL2"
-
-dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-
-wsl --set-default-version 2
-
+. ./providers/wsl2.ps1
 
 Write-Host "##########################################################"
 Write-Host "Creating config folder"
@@ -189,51 +186,9 @@ Ensure-Dir -Dir "${HOME}/.configs/.scripts"
 Write-Host "[   ] Set env varaiable ConfigLocation"
 [System.Environment]::SetEnvironmentVariable('ConfigLocation',"${HOME}/.configs", 'User')
 
-Write-Host "##########################################################"
+. ./providers/node.ps1
 
-Write-Host "Installing Node.js 18"
-nvm install 18
-nvm install 14.18.1
-nvm use 14.18.1
-
-
-Write-Host "##########################################################"
-Write-Host "Setting up terminal"
-
-Write-Host "Installing Terminal modules"
-Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
-
-Install-Module PSReadLine
-Install-Module -Name Terminal-Icons -Repository PSGallery
-Install-Module WTToolBox
-
-Install-Module npm-completion -Scope CurrentUser
-Install-Module posh-git -Scope CurrentUser -Force
-
-Write-Host "Installing Nerd Font"
-if(!(Test-FontExists CascadiaCode)){
-    oh-my-posh.exe font install CascadiaCode
-}
-
-
-Write-Host "Installing oh-my-posh"
-# Get-Content -Path "${HOME}/.configs/PS_Profile.ps1" | Set-Content -Path $PROFILE
-if((Test-Path -Path $PROFILE -PathType leaf)){
-    Remove-Item -Path $PROFILE
-}
-New-Item -Path $PROFILE -ItemType SymbolicLink -Value "${HOME}/.configs/PS_Profile.ps1"
-
-
-Write-Host "Configuring Windows Terminal"
-
-$TerminalConfigFile = "$($env:LOCALAPPDATA)\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-$PrevTerminalConfigFile = "$($env:LOCALAPPDATA)\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json"
-
-$new = Get-Content "${HOME}/.configs/windows-terminal.json" | ConvertFrom-Json;
-$a = Get-Content $PrevTerminalConfigFile -raw | ConvertFrom-Json;
-
-merge $a $new 
-$a | ConvertTo-Json -Depth 32 | set-content $PrevTerminalConfigFile
+. ./providers/ps-terminal.ps1
 
 
 Write-Host "##########################################################"
@@ -268,36 +223,6 @@ Write-Host "[   ] Set env varaiable Projects"
 
 . ./providers/notes.ps1
 
-Notes;
-
 Write-Host "Optional Features"
 
-
-Write-Host "Vulkan SDK"
-
-if (!(Test-Path 'env:ImportStatus ')) {
-
-    $decision = $Host.UI.PromptForChoice('VulkanSDK', 'Do you want to install VulkanSDK', @('&Yes'; '&No'), 1)
-    if($decision -eq 0){
-        $TargetDir = "${env:Projects}/_SDKs/Vulkan"
-        Ensure-Dir $TargetDir
-
-        $SDK_VERSION = "latest"
-        $source = "https://sdk.lunarg.com/sdk/download/${SDK_VERSION}/windows/vulkan_sdk.exe"
-
-        $destination = "${env:Projects}/_Tmp/Downloads"
-        Ensure-Dir $destination
-        $destFile = "$destination/vulkan_sdk.exe"
-        
-        if(!(Test-Path -Path $destFile)){
-            Invoke-WebRequest -Uri $source -OutFile $destFile
-        }
-
-        & $destFile --root $TargetDir --accept-licenses --default-answer --confirm-command install
-
-
-    }
-}
-else {
-    Write-Host "Vulkan is already installed"
-}
+. ./providers/vulkan.ps1

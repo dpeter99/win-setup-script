@@ -20,7 +20,7 @@ Function Test-CommandExists
  Finally {$ErrorActionPreference=$oldPreference}
 } #end function test-CommandExists
 
-function merge ($target, $source) {
+function Merge ($target, $source) {
     $source.psobject.Properties | % {
         if ($_.TypeNameOfValue -eq 'System.Management.Automation.PSCustomObject' -and $target."$($_.Name)" ) {
             merge $target."$($_.Name)" $_.Value
@@ -31,6 +31,7 @@ function merge ($target, $source) {
     }
 }
 
+Export-ModuleMember -Function Merge
 
 function Test-FontExists 
 {
@@ -54,6 +55,7 @@ function Test-FontExists
     return $check
 }
 
+Export-ModuleMember -Function Test-FontExists
 
 function Ensure-Dir {
     param (
@@ -63,3 +65,5 @@ function Ensure-Dir {
         New-Item -ItemType Directory -Force -Path $Dir
     }
 }
+
+Export-ModuleMember -Function Ensure-Dir
