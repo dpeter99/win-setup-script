@@ -1,5 +1,3 @@
-Import-Module -Name "$PSScriptRoot/../utils.psm1"
-
 function Ensure-Module {
     param (
         $Name,
@@ -22,31 +20,30 @@ function Ensure-Module {
 }
 
 
-Write-Host "##########################################################"
-Write-Host "Setting up terminal"
+Write-Header "Setting up terminal"
 
-Write-Host "Installing Terminal modules"
+Write-Stage "Installing Terminal modules"
 Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
-Ensure-Module PSReadLine
+#Ensure-Module PSReadLine
 Ensure-Module Terminal-Icons
 
 Ensure-Module WTToolBox
 Ensure-Module npm-completion
 Ensure-Module posh-git
 
-Write-Host "Installing Nerd Font"
+Write-Stage "Installing Nerd Font"
 if(!(Test-FontExists CascadiaCode)){
     oh-my-posh.exe font install CascadiaCode
 }
 
 
-Write-Host "Installing oh-my-posh"
+Write-Stage "Installing oh-my-posh"
 # Get-Content -Path "${HOME}/.configs/PS_Profile.ps1" | Set-Content -Path $PROFILE
 if((Test-Path -Path $PROFILE -PathType leaf)){
     Remove-Item -Path $PROFILE
 }
-New-Item -Path $PROFILE -ItemType SymbolicLink -Value "${HOME}/.configs/PS_Profile.ps1"
+New-Item -Path $PROFILE -ItemType SymbolicLink -Value "${HOME}/.configs/PS_Profile.ps1" > $null
 
 
 Write-Host "Configuring Windows Terminal"

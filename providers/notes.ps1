@@ -1,6 +1,5 @@
 
-Write-Host "##########################################################"
-Write-Host "Setting up notes folders"
+Write-Header "Setting up notes folders"
 
 $decision = $Host.UI.PromptForChoice('Notes Setup', "Do you want to clone a folder for git based not taking? /n $notesFolder", @('&Yes'; '&No'), 1)
 if($decision -eq 1){

@@ -1,16 +1,13 @@
-Import-Module -Name "$PSScriptRoot/../utils.psm1"
-
-Write-Host "##########################################################"
-Write-Host "Creating config folder"
+Write-Header "Creating config folder"
 
 Ensure-Dir -Dir "${HOME}/.configs"
 
-Write-Host "[   ] Copy configs"
+Write-Stage "Copy configs"
 robocopy "./.configs" "${HOME}/.configs" > $null
 
-Write-Host "[   ] Create scripts folder"
+Write-Stage "Create scripts folder"
 Ensure-Dir -Dir "${HOME}/.configs/.scripts"
 [System.Environment]::SetEnvironmentVariable("Path", $env:Path + ";${HOME}/.configs/.scripts", "User")
 
-Write-Host "[   ] Set env varaiable ConfigLocation"
+Write-Stage "Set env varaiable ConfigLocation"
 [System.Environment]::SetEnvironmentVariable('ConfigLocation',"${HOME}/.configs", 'User')

@@ -1,4 +1,4 @@
-Import-Module -Name "$PSScriptRoot/utils.psm1"
+Import-Module -Name "$PSScriptRoot/utils.psm1" -Force
 . ./providers/winget.ps1
 
 $executionPolicy = Get-ExecutionPolicy;
@@ -43,73 +43,16 @@ else
 }
 
 #Install New apps
-$apps = @(
-    @{mgr="winget"; name = "Google.Chrome" },
-    # @{mgr="winget"; name = "9NCBCSZSJRSB"; source="msstore"}, # Spotify
-    @{mgr="winget"; name = "Discord.Discord"},
 
-    @{mgr="winget"; name = "ShareX.ShareX" },
+. .\load_apps.ps1;
 
-    @{mgr="winget"; name = "Microsoft.PowerShell" }, 
-    @{mgr="winget"; name = "Microsoft.VisualStudioCode" }, 
-    @{mgr="winget"; name = "Microsoft.WindowsTerminal"; source = "msstore" },
-    @{mgr="winget"; name = "Microsoft.WindowsTerminal.Preview"; source = "msstore" },
-    @{mgr="winget"; name = "JanDeDobbeleer.OhMyPosh"; source="winget"},
-    @{mgr="winget"; name = "Microsoft.PowerToys" },
-    @{mgr="winget"; name = "9P7KNL5RWT25"; source="msstore"}, # Sysinternals
-    
-
-    @{mgr="winget"; name = "Notepad++.Notepad++" },
-    @{mgr="winget"; name = "VideoLAN.VLC" },
-    @{mgr="winget"; name = "7zip.7zip" },
-    
-    @{mgr="winget"; name = "PuTTY.PuTTY"},
-    @{mgr="winget"; name = "WinSCP.WinSCP"},
-
-    @{mgr="winget"; name = "JetBrains.Toolbox" },
-    @{mgr="winget"; name = "CoreyButler.NVMforWindows"},
-        
-    @{mgr="winget"; name = "GnuPG.Gpg4win" },
-    @{mgr="winget"; name = "Git.Git" },
-    @{mgr="winget"; name = "GitHub.GitLFS" },
-    @{mgr="winget"; name = "Axosoft.GitKraken" },
-    @{mgr="winget"; name = "GitHub.cli" },
-    @{mgr="winget"; name = "Atlassian.Sourcetree" },
-
-    @{mgr="winget"; name = "SlackTechnologies.Slack" },
-
-    @{mgr="winget"; name = "SparkLabs.Viscosity"},
-    
-    @{mgr="choco"; name = "lazygit" },
-    @{mgr="choco"; name = "bazelisk" },
-    @{mgr="choco"; name = "buildifier" },
-    @{mgr="choco"; name = "buildozer" },
-    
-    @{mgr="winget"; name = "Python.Python.3"},
-
-    @{mgr="winget"; name="Postman.Postman" },
-    @{mgr="winget"; name="HeidiSQL.HeidiSQL"},
-
-    #@{mgr="winget"; name = "EclipseAdoptium.Temurin.11" }
-    @{mgr="winget"; name = "Docker.DockerDesktop" }
-    @{mgr="winget"; name = "Mirantis.Lens" }
-    @{mgr="winget"; name = "DominikReichl.KeePass" }
-    @{mgr="winget"; name = "ChristianSchenk.MiKTeX" }
-    @{mgr="winget"; name = "StrawberryPerl.StrawberryPerl" }
-    
-    @{mgr="winget"; name = "Obsidian.Obsidian"}
-
-    @{mgr="choco"; name = "paint.net" }
-);
+$apps = Load-AppsToInstall
 
 
-
-Write-Host "###############################################################"
-Write-Host "Ensuring chocolaty is installed"
+Write-Header "Ensuring chocolaty is installed"
 Ensure-Choco
 
-Write-Host "###############################################################"
-Write-Host "Installing"
+Write-Header "Installing"
 
 Foreach ($app in $apps) {
     
@@ -171,28 +114,14 @@ Write-Host "[   ] All Programs installed"
 
 . ./providers/wsl2.ps1
 
-Write-Host "##########################################################"
-Write-Host "Creating config folder"
-
-Ensure-Dir -Dir "${HOME}/.configs"
-
-Write-Host "[   ] Copy configs"
-robocopy "./.configs" "${HOME}/.configs" > $null
-
-Write-Host "[   ] Create scripts folder"
-Ensure-Dir -Dir "${HOME}/.configs/.scripts"
-[System.Environment]::SetEnvironmentVariable("Path", $env:Path + ";${HOME}/.configs/.scripts", "User")
-
-Write-Host "[   ] Set env varaiable ConfigLocation"
-[System.Environment]::SetEnvironmentVariable('ConfigLocation',"${HOME}/.configs", 'User')
+. ./providers/configs.ps1
 
 . ./providers/node.ps1
 
 . ./providers/ps-terminal.ps1
 
 
-Write-Host "##########################################################"
-Write-Host "Setting up work folders"
+Write-Header "Setting up work folders"
 
 $workFolderName = "programing"
 $workFolder = "${HOME}/Documents/" + $workFolderName
@@ -223,6 +152,6 @@ Write-Host "[   ] Set env varaiable Projects"
 
 . ./providers/notes.ps1
 
-Write-Host "Optional Features"
+Write-Header "Optional Features" -Color DarkYellow
 
 . ./providers/vulkan.ps1

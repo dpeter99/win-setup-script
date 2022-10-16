@@ -9,6 +9,7 @@ function Ensure-Choco {
         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
     }
 }
+Export-ModuleMember -Function Ensure-Choco
 
 Function Test-CommandExists
 {
@@ -67,3 +68,26 @@ function Ensure-Dir {
 }
 
 Export-ModuleMember -Function Ensure-Dir
+
+
+function Write-Header {
+    param (
+        $Name,
+        $Color = "DarkGreen"
+    )
+    Write-Host "################################################################"
+    Write-Host -BackgroundColor $Color $Name -NoNewline
+    Write-Host "";
+}
+Export-ModuleMember -Function Write-Header
+
+function Write-Stage {
+    param (
+        $Name,
+        $Color = "DarkGreen"
+    )
+    Write-Host "[   ] " -NoNewline
+    Write-Host -BackgroundColor $Color $Name -NoNewline
+    Write-Host "";
+}
+Export-ModuleMember -Function Write-Stage
