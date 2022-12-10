@@ -23,6 +23,16 @@ Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock {
         }
 }
 
+function Get-GHRepos {
+    param ()
+    
+    $repos = gh repo list --json nameWithOwner,name,sshUrl | ConvertFrom-Json | ForEach-Object {
+        return @{DisplayName= $_.nameWithOwner; Name= $_.name; ssh = $_.sshUrl}
+    }
+
+    return $repos;
+}
+
 Register-ArgumentCompleter -CommandName Project -ParameterName Name -ScriptBlock {
     param($commandName,
     $parameterName,
@@ -36,12 +46,22 @@ Register-ArgumentCompleter -CommandName Project -ParameterName Name -ScriptBlock
         $path = Get-PathForProjectType ""
     }
 
-    Get-ChildItem -Path ($path) -Directory | ForEach-Object {
+    $res = Get-ChildItem -Path ($path) -Directory | ForEach-Object {
         [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Name)
     }
+
+    $res += Get-GHRepos | ForEach-Object {
+        if(!(($res.CompletionText) -contains $_.Name)){
+            [System.Management.Automation.CompletionResult]::new($_.Name, "GH: " + $_.DisplayName, 'ParameterValue', $_.Name)
+        }
+    }
+
+    return $res;
 }
 
+
 $types = @(
+    "Own",
     "Test",
     "Work",
     "Others"
@@ -108,6 +128,22 @@ function Project {
         New-Item $Path -ItemType Directory | Out-Null
         cd $path;
     }
+
+    $gh = Get-GHRepos | Where-Object Name -eq $Name
+
+    if($null -ne $gh){
+        
+        if(!(Test-Path .git )){
+
+            Write-Host "${gh.ssh}";
+
+            $decision = $Host.UI.PromptForChoice('Clone from GH', 'Do you want to clone' + $gh.DisplayName, @('&Yes'; '&No'), 1)
+            if($decision -eq 0){
+                git clone $gh.ssh .
+            }
+        }
+    }
+
     # Write-Host $path;
 }
 
